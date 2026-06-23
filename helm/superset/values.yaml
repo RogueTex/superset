@@ -194,9 +194,12 @@ image:
 
 imagePullSecrets: []
 
+# -- Image used by the dependency-wait init containers. Defaults to the main
+# Superset image so the startup-wait path reuses an already-required image
+# instead of pulling a dedicated helper image (smaller deployment supply chain).
 initImage:
-  repository: apache/superset
-  tag: dockerize
+  repository: apachesuperset.docker.scarf.sh/apache/superset
+  tag: ~
   pullPolicy: IfNotPresent
 
 service:
@@ -303,7 +306,7 @@ supersetNode:
   # @default -- a container waiting for postgres
   initContainers:
     - name: wait-for-postgres
-      image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
+      image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag | default .Chart.AppVersion }}"
       imagePullPolicy: "{{ .Values.initImage.pullPolicy }}"
       envFrom:
         - secretRef:
@@ -311,7 +314,24 @@ supersetNode:
       command:
         - /bin/sh
         - -c
-        - dockerize -wait "tcp://$DB_HOST:$DB_PORT" -timeout 120s
+        - |-
+          exec python3 - "$DB_HOST" "$DB_PORT" <<'PY'
+          import socket, sys, time
+
+          deadline = time.time() + 120
+          for host, port in zip(sys.argv[1::2], sys.argv[2::2]):
+              port = int(port)
+              while time.time() < deadline:
+                  try:
+                      with socket.create_connection((host, port), timeout=5):
+                          print("%s:%s is ready" % (host, port))
+                          break
+                  except OSError:
+                      time.sleep(2)
+              else:
+                  sys.stderr.write("Timed out waiting for %s:%s\n" % (host, port))
+                  sys.exit(1)
+          PY
       resources:
         limits:
           memory: "256Mi"
@@ -407,7 +427,7 @@ supersetWorker:
   # @default -- a container waiting for postgres and redis
   initContainers:
     - name: wait-for-postgres-redis
-      image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
+      image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag | default .Chart.AppVersion }}"
       imagePullPolicy: "{{ .Values.initImage.pullPolicy }}"
       envFrom:
         - secretRef:
@@ -415,7 +435,24 @@ supersetWorker:
       command:
         - /bin/sh
         - -c
-        - dockerize -wait "tcp://$DB_HOST:$DB_PORT" -wait "tcp://$REDIS_HOST:$REDIS_PORT" -timeout 120s
+        - |-
+          exec python3 - "$DB_HOST" "$DB_PORT" "$REDIS_HOST" "$REDIS_PORT" <<'PY'
+          import socket, sys, time
+
+          deadline = time.time() + 120
+          for host, port in zip(sys.argv[1::2], sys.argv[2::2]):
+              port = int(port)
+              while time.time() < deadline:
+                  try:
+                      with socket.create_connection((host, port), timeout=5):
+                          print("%s:%s is ready" % (host, port))
+                          break
+                  except OSError:
+                      time.sleep(2)
+              else:
+                  sys.stderr.write("Timed out waiting for %s:%s\n" % (host, port))
+                  sys.exit(1)
+          PY
       resources:
         limits:
           memory: "256Mi"
@@ -495,7 +532,7 @@ supersetCeleryBeat:
   # @default -- a container waiting for postgres
   initContainers:
     - name: wait-for-postgres-redis
-      image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
+      image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag | default .Chart.AppVersion }}"
       imagePullPolicy: "{{ .Values.initImage.pullPolicy }}"
       envFrom:
         - secretRef:
@@ -503,7 +540,24 @@ supersetCeleryBeat:
       command:
         - /bin/sh
         - -c
-        - dockerize -wait "tcp://$DB_HOST:$DB_PORT" -wait "tcp://$REDIS_HOST:$REDIS_PORT" -timeout 120s
+        - |-
+          exec python3 - "$DB_HOST" "$DB_PORT" "$REDIS_HOST" "$REDIS_PORT" <<'PY'
+          import socket, sys, time
+
+          deadline = time.time() + 120
+          for host, port in zip(sys.argv[1::2], sys.argv[2::2]):
+              port = int(port)
+              while time.time() < deadline:
+                  try:
+                      with socket.create_connection((host, port), timeout=5):
+                          print("%s:%s is ready" % (host, port))
+                          break
+                  except OSError:
+                      time.sleep(2)
+              else:
+                  sys.stderr.write("Timed out waiting for %s:%s\n" % (host, port))
+                  sys.exit(1)
+          PY
       resources:
         limits:
           memory: "256Mi"
@@ -594,7 +648,7 @@ supersetCeleryFlower:
   # @default -- a container waiting for postgres and redis
   initContainers:
     - name: wait-for-postgres-redis
-      image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
+      image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag | default .Chart.AppVersion }}"
       imagePullPolicy: "{{ .Values.initImage.pullPolicy }}"
       envFrom:
         - secretRef:
@@ -602,7 +656,24 @@ supersetCeleryFlower:
       command:
         - /bin/sh
         - -c
-        - dockerize -wait "tcp://$DB_HOST:$DB_PORT" -wait "tcp://$REDIS_HOST:$REDIS_PORT" -timeout 120s
+        - |-
+          exec python3 - "$DB_HOST" "$DB_PORT" "$REDIS_HOST" "$REDIS_PORT" <<'PY'
+          import socket, sys, time
+
+          deadline = time.time() + 120
+          for host, port in zip(sys.argv[1::2], sys.argv[2::2]):
+              port = int(port)
+              while time.time() < deadline:
+                  try:
+                      with socket.create_connection((host, port), timeout=5):
+                          print("%s:%s is ready" % (host, port))
+                          break
+                  except OSError:
+                      time.sleep(2)
+              else:
+                  sys.stderr.write("Timed out waiting for %s:%s\n" % (host, port))
+                  sys.exit(1)
+          PY
       resources:
         limits:
           memory: "256Mi"
@@ -764,7 +835,7 @@ init:
   # @default -- a container waiting for postgres
   initContainers:
     - name: wait-for-postgres
-      image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
+      image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag | default .Chart.AppVersion }}"
       imagePullPolicy: "{{ .Values.initImage.pullPolicy }}"
       envFrom:
         - secretRef:
@@ -772,7 +843,24 @@ init:
       command:
         - /bin/sh
         - -c
-        - dockerize -wait "tcp://$DB_HOST:$DB_PORT" -timeout 120s
+        - |-
+          exec python3 - "$DB_HOST" "$DB_PORT" <<'PY'
+          import socket, sys, time
+
+          deadline = time.time() + 120
+          for host, port in zip(sys.argv[1::2], sys.argv[2::2]):
+              port = int(port)
+              while time.time() < deadline:
+                  try:
+                      with socket.create_connection((host, port), timeout=5):
+                          print("%s:%s is ready" % (host, port))
+                          break
+                  except OSError:
+                      time.sleep(2)
+              else:
+                  sys.stderr.write("Timed out waiting for %s:%s\n" % (host, port))
+                  sys.exit(1)
+          PY
       resources:
         limits:
           memory: "256Mi"
