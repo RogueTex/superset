@@ -7,6 +7,8 @@ on:
   pull_request:
     types: [created, edited]
 
+permissions: {}
+
 jobs:
   superbot-orglabel:
     runs-on: ubuntu-24.04

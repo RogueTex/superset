@@ -33,13 +33,19 @@ jobs:
       - name: Resolve issue target
         id: target
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_ISSUE_NUMBER: ${{ inputs.issue_number }}
+          INPUT_REPO: ${{ inputs.repo }}
+          EVENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
+          GH_REPOSITORY: ${{ github.repository }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "issue_number=${{ inputs.issue_number }}" >> "$GITHUB_OUTPUT"
-            echo "repo=${{ inputs.repo }}" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "issue_number=$INPUT_ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
+            echo "repo=$INPUT_REPO" >> "$GITHUB_OUTPUT"
           else
-            echo "issue_number=${{ github.event.issue.number }}" >> "$GITHUB_OUTPUT"
-            echo "repo=${{ github.repository }}" >> "$GITHUB_OUTPUT"
+            echo "issue_number=$EVENT_ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
+            echo "repo=$GH_REPOSITORY" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Start Devin run

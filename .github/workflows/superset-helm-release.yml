@@ -18,6 +18,8 @@ on:
         required: false
         default: "master"
 
+permissions: {}
+
 jobs:
   release:
     runs-on: ubuntu-24.04
