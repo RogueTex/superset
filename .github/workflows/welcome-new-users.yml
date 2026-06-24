@@ -5,6 +5,8 @@ on:
   pull_request_target:
     types: [opened]
 
+permissions: {}
+
 jobs:
   welcome:
     runs-on: ubuntu-24.04

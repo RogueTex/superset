@@ -21,6 +21,8 @@ on:
   #schedule:
   #  - cron: '0 0 * * *'  # Runs daily at midnight UTC
 
+permissions: {}
+
 jobs:
   bump-python-package:
     runs-on: ubuntu-24.04
