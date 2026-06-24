@@ -30,6 +30,10 @@ import pytest
 from marshmallow import ValidationError
 
 
+class _FakeModel:
+    """Minimal stand-in for a SQLAlchemy model used by FAB-style schemas."""
+
+
 def test_validates_kwargs_database_schema() -> None:
     """Regression: marshmallow 4.x requires **kwargs on @validates methods.
 
@@ -124,11 +128,13 @@ def test_fab_field_stubbing_is_single_pass() -> None:
         patch_marshmallow_for_flask_appbuilder()
 
         # FAB-style schema: Meta.fields references undeclared relationship names,
-        # which marshmallow 4.x rejects with KeyError.
+        # which marshmallow 4.x rejects with KeyError. Meta.model marks it as a
+        # FAB/SQLAlchemyAutoSchema-generated class so the patch applies.
         class FabStyleSchema(mm.Schema):
             a = mm.fields.String()
 
             class Meta:
+                model = _FakeModel
                 fields = ("a", "related_model", "owner", "parent_id")
 
         calls["n"] = 0
@@ -143,6 +149,43 @@ def test_fab_field_stubbing_is_single_pass() -> None:
         # The undeclared FAB names resolve to Raw stubs in the built field set.
         instance = FabStyleSchema()
         assert isinstance(instance.fields["related_model"], mm.fields.Raw)
+    finally:
+        mm.Schema._init_fields = base_init_fields
+
+
+@pytest.mark.skipif(
+    tuple(int(p) for p in version("marshmallow").split(".")[:1]) < (4,),
+    reason="FAB _init_fields KeyError only occurs on marshmallow >= 4",
+)
+def test_non_fab_schema_typo_still_raises() -> None:
+    """Regression: a non-FAB schema with a Meta.fields typo must still fail.
+
+    Before the fix the compatibility predicate was broad enough to treat any
+    snake_case name as FAB-like, silently stubbing it with ``Raw`` instead of
+    letting marshmallow surface the error. After the fix, only schemas whose
+    ``Meta.model`` is set (i.e. FAB-generated schemas) receive the stub
+    treatment; plain marshmallow schemas raise on unknown field names.
+    """
+    import marshmallow as mm
+
+    from superset.marshmallow_compatibility import (
+        patch_marshmallow_for_flask_appbuilder,
+    )
+
+    base_init_fields = mm.Schema._init_fields
+    try:
+        patch_marshmallow_for_flask_appbuilder()
+
+        # Plain marshmallow schema — no Meta.model, not FAB-generated.
+        class UserSchema(mm.Schema):
+            name = mm.fields.String()
+            email = mm.fields.String()
+
+            class Meta:
+                fields = ("name", "email", "emial")  # 'emial' is a typo
+
+        with pytest.raises((KeyError, ValueError)):
+            UserSchema()
     finally:
         mm.Schema._init_fields = base_init_fields
 
