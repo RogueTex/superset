@@ -46,12 +46,23 @@ SAFE_LOADERS = {"SafeLoader", "CSafeLoader"}
 SUPPRESSION = "yaml-load-safe"
 
 
+def _node_is_safe_loader(node: ast.expr) -> bool:
+    """Return True if *node* resolves to a safe loader name."""
+    if isinstance(node, ast.Attribute) and node.attr in SAFE_LOADERS:
+        return True
+    if isinstance(node, ast.Name) and node.id in SAFE_LOADERS:
+        return True
+    return False
+
+
 def _loader_is_safe(call: ast.Call) -> bool:
-    """Return True if the ``Loader=`` keyword uses a safe loader class."""
+    """Return True if a safe loader is passed via keyword or positional arg."""
     for kw in call.keywords:
-        if kw.arg == "Loader" and isinstance(kw.value, ast.Attribute):
-            if kw.value.attr in SAFE_LOADERS:
-                return True
+        if kw.arg == "Loader" and _node_is_safe_loader(kw.value):
+            return True
+    # yaml.load(stream, Loader) — Loader is the second positional arg
+    if len(call.args) >= 2 and _node_is_safe_loader(call.args[1]):
+        return True
     return False
 
 

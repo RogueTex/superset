@@ -95,6 +95,23 @@ def test_yaml_load_with_full_loader_is_flagged(tmp_path: Path) -> None:
     assert len(violations) == 1
 
 
+def test_positional_safe_loader_is_allowed(tmp_path: Path) -> None:
+    f = _write(
+        tmp_path,
+        "import yaml\ndata = yaml.load(stream, yaml.SafeLoader)\n",
+    )
+    assert checker.scan_file(f) == []
+
+
+def test_bare_name_safe_loader_is_allowed(tmp_path: Path) -> None:
+    f = _write(
+        tmp_path,
+        "from yaml import SafeLoader\nimport yaml\n"
+        "data = yaml.load(stream, Loader=SafeLoader)\n",
+    )
+    assert checker.scan_file(f) == []
+
+
 def test_main_returns_zero_on_clean_files(tmp_path: Path) -> None:
     f = _write(tmp_path, "import yaml\ndata = yaml.safe_load(stream)\n")
     assert checker.main([str(f)]) == 0
