@@ -100,6 +100,14 @@ repos:
     hooks:
       - id: blacklist
         args: ["--blacklisted-names=make_url", "--ignore=tests/"]
+  - repo: local
+    hooks:
+      - id: check-unsafe-yaml
+        name: check unsafe yaml.load
+        entry: python scripts/check_unsafe_yaml.py
+        language: system
+        types: [python]
+        pass_filenames: true
   - repo: https://github.com/norwoodj/helm-docs
     rev: v1.14.2
     hooks:

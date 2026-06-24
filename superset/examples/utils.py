@@ -258,7 +258,7 @@ def load_configs_from_directory(
 
     # removing "type" from the metadata allows us to import any exported model
     # from the unzipped directory directly
-    metadata = yaml.load(contents.get(METADATA_FILE_NAME, "{}"), Loader=yaml.Loader)  # noqa: S506
+    metadata = yaml.load(contents.get(METADATA_FILE_NAME, "{}"), Loader=yaml.Loader)  # noqa: S506  # yaml-load-safe
     if "type" in metadata:
         del metadata["type"]
     contents[METADATA_FILE_NAME] = yaml.dump(metadata)
